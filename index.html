@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Generator Grup Angka</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 500px;
+      margin-top: 10px;
+    }
+    input, select, button {
+      margin: 5px 0;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Generator Grup Angka Acak</h1>
+
+  <label>Jumlah Grup:
+    <input type="number" id="groupCount" value="4" min="1"/>
+  </label><br>
+
+  <label>Ukuran Grup Kustom (pisah koma, total 100):
+    <input type="text" id="customSizes" placeholder="misal: 25,25,25,25"/>
+  </label><br>
+
+  <label>Pemisah Angka:
+    <input type="text" id="separator" value="*"/>
+  </label><br>
+
+  <label>Jumlah Pembelian:
+    <input type="number" id="pembelian" value="1" min="1"/>
+  </label><br>
+
+  <label>Mode:
+    <select id="mode">
+      <option value="Semua">Semua</option>
+      <option value="Ganjil">Ganjil</option>
+      <option value="Genap">Genap</option>
+      <option value="Pisah">Pisah Ganjil/Genap</option>
+    </select>
+  </label><br>
+
+  <button onclick="generate()">Generate</button>
+  <button onclick="applyBonus()">BONUS -5000</button>
+  <button onclick="applyTambahan()">TAMBAH #1000 per pembelian</button>
+  <button onclick="copyToClipboard()">Copy ke Clipboard</button>
+
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    let bonus = false;
+    let hasilGrup = "";
+    let hasilHarga = "";
+    const hargaPerAngka = 710;
+
+    function generate() {
+      const groupCount = parseInt(document.getElementById("groupCount").value);
+      const pembelian = parseInt(document.getElementById("pembelian").value);
+      const separator = document.getElementById("separator").value;
+      const mode = document.getElementById("mode").value;
+      const customSizes = document.getElementById("customSizes").value.trim();
+
+      let sizes = [];
+      if (customSizes) {
+        sizes = customSizes.split(",").map(x => parseInt(x.trim()));
+        if (sizes.reduce((a, b) => a + b, 0) !== 100) {
+          alert("Jumlah total angka harus 100!");
+          return;
+        }
+        if (sizes.length !== groupCount) {
+          alert("Jumlah grup tidak sesuai dengan ukuran grup kustom!");
+          return;
+        }
+      } else {
+        const base = Math.floor(100 / groupCount);
+        sizes = Array(groupCount).fill(base);
+        for (let i = 0; i < 100 % groupCount; i++) sizes[i]++;
+      }
+
+      let numbers = Array.from({ length: 100 }, (_, i) => i.toString().padStart(2, '0'));
+
+      if (mode === "Ganjil") {
+        numbers = numbers.filter(n => parseInt(n) % 2 === 1);
+      } else if (mode === "Genap") {
+        numbers = numbers.filter(n => parseInt(n) % 2 === 0);
+      } else if (mode === "Pisah") {
+        const ganjil = numbers.filter(n => parseInt(n) % 2 === 1);
+        const genap = numbers.filter(n => parseInt(n) % 2 === 0);
+        numbers = [...shuffle(ganjil), ...shuffle(genap)];
+      }
+
+      if (numbers.length < 100) {
+        alert("Angka tersedia kurang dari 100 untuk mode ini.");
+        return;
+      }
+
+      numbers = shuffle(numbers);
+
+      let start = 0;
+      let groupLines = "";
+      let hargaLines = "";
+      let total = 0;
+      let profit = 0;
+
+      for (let i = 0; i < groupCount; i++) {
+        const group = numbers.slice(start, start + sizes[i]);
+        start += sizes[i];
+        let harga = group.length * hargaPerAngka * pembelian;
+        if (bonus) harga = Math.max(0, harga - 5000);
+        groupLines += `Grup ${i + 1}: ${group.join(separator)}\n`;
+        hargaLines += `Total Harga Grup ${i + 1}: Rp${harga.toLocaleString()}${bonus ? ' (BONUS -5000)' : ''}\n`;
+        total += harga;
+      }
+
+      hargaLines += `
+Total Keseluruhan: Rp${total.toLocaleString()}`;
+      profit = (70000 * pembelian) - total;
+      hargaLines += `
+Profit: Rp${profit.toLocaleString()}`;
+      hasilGrup = groupLines.trim();
+      hasilHarga = hargaLines.trim();
+      document.getElementById("output").value = hasilGrup + "\n\n" + hasilHarga;
+      bonus = false;
+    }
+
+    function applyBonus() {
+      bonus = true;
+      generate();
+    }
+
+    function applyTambahan() {
+      const pembelian = parseInt(document.getElementById("pembelian").value);
+      const hasil = hasilGrup
+        .split("\n")
+        .map(line => line + `#${1000 * pembelian}`)
+        .join("\n");
+
+      document.getElementById("output").value = hasil + "\n\n" + hasilHarga;
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById("output").value;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Disalin ke clipboard!");
+      });
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+  </script>
+</body>
+</html>
